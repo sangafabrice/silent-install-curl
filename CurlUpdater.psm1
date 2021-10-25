@@ -1,6 +1,8 @@
 $CURL_FOR_WINDOWS_PAGE = 'https://curl.se/windows/'
 $CURL_EXECUTABLE_NAME = 'curl.exe'
 $CURL_CERTIFICATE_NAME = 'curl-ca-bundle.crt'
+$LibPath_DLL_NAME = 'LibPath-x64.dll'
+$LibPath_DEF_NAME = 'LibPath-x64.def'
 $NT_ACCOUNT_ADMINISTRATORS = [System.Security.Principal.NTAccount] "BUILTIN\Administrators"
 $NT_ACCOUNT_TRUSTEDINSTALLER = [System.Security.Principal.NTAccount] "NT SERVICE\TrustedInstaller"
 $ACCESS_RULE = [System.Security.AccessControl.FileSystemAccessRule]::new('BUILTIN\Administrators','FullControl','Allow')
@@ -39,7 +41,8 @@ function Save-Curl ($LocalName, $Link) {
         }
         [PSCustomObject] @{
             ExePath = & $GetSetup $CURL_EXECUTABLE_NAME;
-            CrtPath = & $GetSetup $CURL_CERTIFICATE_NAME
+            CrtPath = & $GetSetup $CURL_CERTIFICATE_NAME;
+            LibPath = ((& $GetSetup $LIBCURL_DLL_NAME),(& $GetSetup $LIBCURL_DEF_NAME))
         }
     }
     catch {}
@@ -72,6 +75,10 @@ function Update-CurlCertificate ($CertPath) {
     [System.Environment]::SetEnvironmentVariable('CURL_CA_BUNDLE', $CURL_CERT_DEFAULT_DIRECTORY, 'Machine')
 }
 
+function Update-Libcurl ($LibPath) {
+    Compress-Archive -Path $LibPath -DestinationPath '.\libcurl.zip' -CompressionLevel Optimal -Force
+}
+
 function Update-Curl {
     Get-CurlDownloadInfo |
     ForEach-Object {
@@ -81,6 +88,7 @@ function Update-Curl {
             ForEach-Object {
                 Update-CurlExecutable -SetupPath $_.ExePath
                 Update-CurlCertificate -CertPath $_.CrtPath
+                Update-Libcurl -LibPath $_.LibPath
             }
             New-Item -Path $_.Version -ItemType File | Out-Null
             Remove-Item -Path $LocalName -Force -Recurse
