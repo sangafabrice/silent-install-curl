@@ -29,7 +29,8 @@ function Compare-CurlDownloadInfo ($Version) {
 function Save-Curl ($LocalName, $Link) {
     try {
         Start-BitsTransfer -Source $Link -Destination "$LocalName.zip" -ErrorAction Stop
-        Expand-Archive -Path "$LocalName.zip" -DestinationPath $LocalName
+        Expand-Archive -Path "$LocalName.zip" -DestinationPath $LocalName -ErrorAction Stop -Force
+        Remove-Item -Path "$LocalName.zip" -Force
         $GetSetup = {
             param ($SetupFile)
             (Get-ChildItem -Path $LocalName -Recurse -Filter $SetupFile -File).FullName
@@ -42,7 +43,7 @@ function Save-Curl ($LocalName, $Link) {
     catch {}
 }
 
-function Update-Curl ($SetupPath) {
+function Update-CurlExecutable ($SetupPath) {
     if (Test-Path -Path $CURL_DEFAULT_PATH) {
         Get-Acl -Path $CURL_DEFAULT_PATH |
         ForEach-Object {
@@ -51,7 +52,10 @@ function Update-Curl ($SetupPath) {
             $_.SetOwner($NT_ACCOUNT_ADMINISTRATORS)
             $_.SetAccessRule($ACCESS_RULE)
             Set-Acl -Path $CURL_DEFAULT_PATH -AclObject $_
-            Copy-Item -Path $SetupPath -Destination $CURL_DEFAULT_PATH -Force
+            try {
+                Copy-Item -Path $SetupPath -Destination $CURL_DEFAULT_PATH -ErrorAction Stop -Force
+            }
+            catch {}
         }
     } else {
         Copy-Item -Path $SetupPath -Destination $CURL_ALT_PATH -Force
@@ -63,3 +67,21 @@ function Update-CurlCertificate ($CertPath) {
     Copy-Item -Path $CertPath -Destination $CURL_CERT_DEFAULT_DIRECTORY -Force
     [System.Environment]::SetEnvironmentVariable('CURL_CA_BUNDLE', $CURL_CERT_DEFAULT_DIRECTORY, 'Machine')
 }
+
+function Update-Curl {
+    Get-CurlDownloadInfo |
+    ForEach-Object {
+        if (Compare-CurlDownloadInfo -Version $_.Version) {
+            $LocalName = "curl-$($_.Version)"
+            Save-Curl -LocalName $LocalName -Link $_.Link |
+            ForEach-Object {
+                Update-CurlExecutable -SetupPath $_.ExePath
+                Update-CurlCertificate -CertPath $_.CrtPath
+            }
+            New-Item -Path $_.Version -ItemType File | Out-Null
+            Remove-Item -Path $LocalName -Force -Recurse
+        }
+    }
+}
+
+Export-ModuleMember -Function 'Update-Curl'
