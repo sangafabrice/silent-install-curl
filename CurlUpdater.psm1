@@ -1,8 +1,8 @@
 $CURL_FOR_WINDOWS_PAGE = 'https://curl.se/windows/'
 $CURL_EXECUTABLE_NAME = 'curl.exe'
 $CURL_CERTIFICATE_NAME = 'curl-ca-bundle.crt'
-$LibPath_DLL_NAME = 'LibPath-x64.dll'
-$LibPath_DEF_NAME = 'LibPath-x64.def'
+$LIBCURL_DLL_NAME = 'Libcurl-x64.dll'
+$LIBCURL_DEF_NAME = 'Libcurl-x64.def'
 $NT_ACCOUNT_ADMINISTRATORS = [System.Security.Principal.NTAccount] "BUILTIN\Administrators"
 $NT_ACCOUNT_TRUSTEDINSTALLER = [System.Security.Principal.NTAccount] "NT SERVICE\TrustedInstaller"
 $ACCESS_RULE = [System.Security.AccessControl.FileSystemAccessRule]::new('BUILTIN\Administrators','FullControl','Allow')
