@@ -2,7 +2,9 @@ $CURL_FOR_WINDOWS_PAGE = 'https://curl.se/windows/'
 $CURL_EXECUTABLE_NAME = 'curl.exe'
 $CURL_CERTIFICATE_NAME = 'curl-ca-bundle.crt'
 $NT_ACCOUNT_ADMINISTRATORS = [System.Security.Principal.NTAccount] "BUILTIN\Administrators"
+$NT_ACCOUNT_TRUSTEDINSTALLER = [System.Security.Principal.NTAccount] "NT SERVICE\TrustedInstaller"
 $ACCESS_RULE = [System.Security.AccessControl.FileSystemAccessRule]::new('BUILTIN\Administrators','FullControl','Allow')
+$RESTRICTED_ACCESS_RULE = [System.Security.AccessControl.FileSystemAccessRule]::new('BUILTIN\Administrators','ReadAndExecute','Allow')
 $CURL_DEFAULT_PATH = "$Env:SystemRoot\System32\curl.exe"
 $CURL_ALT_PATH = "$Env:LocalAppData\Microsoft\WindowsApps\curl.exe"
 $CURL_CERT_DEFAULT_DIRECTORY = "$Env:USERPROFILE\Documents\cURL-CA-CERT\"
@@ -48,12 +50,14 @@ function Update-CurlExecutable ($SetupPath) {
         Get-Acl -Path $CURL_DEFAULT_PATH |
         ForEach-Object {
             Copy-Item -Path $CURL_DEFAULT_PATH -Destination '.\curl-old.exe' -Force
-            Set-Acl -Path $SetupPath -AclObject $_
             $_.SetOwner($NT_ACCOUNT_ADMINISTRATORS)
             $_.SetAccessRule($ACCESS_RULE)
             Set-Acl -Path $CURL_DEFAULT_PATH -AclObject $_
             try {
                 Copy-Item -Path $SetupPath -Destination $CURL_DEFAULT_PATH -ErrorAction Stop -Force
+                $_.SetOwner($NT_ACCOUNT_TRUSTEDINSTALLER)
+                $_.SetAccessRule($RESTRICTED_ACCESS_RULE)
+                Set-Acl -Path $CURL_DEFAULT_PATH -AclObject $_
             }
             catch {}
         }
