@@ -1,2 +1,3 @@
+Set-Location 'W:\Silent Install\curl'
 Import-Module .\CurlUpdater.psm1
-Update-Curl
+Update-Curl -Save H:\Software\cURL
