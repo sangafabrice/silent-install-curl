@@ -27,7 +27,7 @@ function Get-CurlDownloadInfo {
 }
 
 function Compare-CurlDownloadInfo ($Version) {
-    !(Test-Path -Path "$Version")
+    -not (Test-Path -Path "$Version")
 }
 
 function Save-Curl ($LocalName, $Link) {
@@ -79,11 +79,18 @@ function Update-Libcurl ($LibPath) {
     Compress-Archive -Path $LibPath -DestinationPath '.\libcurl.zip' -CompressionLevel Optimal -Force
 }
 
-function Update-Curl {
+function Update-Curl ($SaveCopyTo) {
+    $SaveCopyToExist = ($null -ne $SaveCopyTo) -and (Test-Path -Path $SaveCopyTo)
     Get-CurlDownloadInfo |
     ForEach-Object {
         if (Compare-CurlDownloadInfo -Version $_.Version) {
             $LocalName = "curl-$($_.Version)"
+            if ($SaveCopyToExist) {
+                $DlLocalArchive = "$SaveCopyTo\$($_.Version).zip"
+                if (Test-Path -Path $DlLocalArchive) {
+                    $_.Link = $DlLocalArchive
+                }
+            }
             Save-Curl -LocalName $LocalName -Link $_.Link |
             ForEach-Object {
                 Update-CurlExecutable -SetupPath $_.ExePath
@@ -91,7 +98,14 @@ function Update-Curl {
                 Update-Libcurl -LibPath $_.LibPath
             }
             New-Item -Path $_.Version -ItemType File | Out-Null
-            Remove-Item -Path $LocalName -Force -Recurse
+            if ($SaveCopyToExist) {
+                $DlLocal = (Get-ChildItem -Path $LocalName -Recurse -Filter 'bin' -Directory).FullName
+                if ($null -ne $DlLocal) {
+                    Remove-Item -Path "$SaveCopyTo\*" -Recurse -Force
+                    Compress-Archive -Path "$DlLocal\*" -DestinationPath $DlLocalArchive -CompressionLevel Optimal -Force
+                }
+            }
+            Remove-Item -Path $LocalName -Recurse -Force
         }
     }
 }
