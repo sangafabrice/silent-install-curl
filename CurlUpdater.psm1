@@ -72,7 +72,7 @@ function Update-CurlExecutable ($SetupPath) {
 function Update-CurlCertificate ($CertPath) {
     New-Item -ItemType 'Directory' -Path $CURL_CERT_DEFAULT_DIRECTORY 2> $null
     Copy-Item -Path $CertPath -Destination $CURL_CERT_DEFAULT_DIRECTORY -Force
-    [System.Environment]::SetEnvironmentVariable('CURL_CA_BUNDLE', $CURL_CERT_DEFAULT_DIRECTORY, 'Machine')
+    [System.Environment]::SetEnvironmentVariable('CURL_CA_BUNDLE', "$CURL_CERT_DEFAULT_DIRECTORY$CURL_CERTIFICATE_NAME", 'Machine')
 }
 
 function Update-Libcurl ($LibPath) {
