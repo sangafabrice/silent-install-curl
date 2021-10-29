@@ -30,16 +30,23 @@ function Compare-CurlDownloadInfo ($Version) {
     -not (Test-Path -Path "$Version")
 }
 
-function Save-Curl ($LocalName, $Link) {
+function Save-Curl ($Link) {
     try {
-        Start-BitsTransfer -Source $Link -Destination "$LocalName.zip" -ErrorAction Stop
-        Expand-Archive -Path "$LocalName.zip" -DestinationPath $LocalName -ErrorAction Stop -Force
-        Remove-Item -Path "$LocalName.zip" -Force
+        $LocalName = ([uri] $Link).Segments[-1]
+        $Unzipped = $LocalName -replace '\.[^\.]+$'
+        Start-BitsTransfer -Source $Link -Destination $LocalName -ErrorAction Stop
+        Expand-Archive -Path $LocalName -DestinationPath $Unzipped -ErrorAction Stop -Force
+        Remove-Item -Path $LocalName -Force
         $GetSetup = {
-            param ($SetupFile)
-            (Get-ChildItem -Path $LocalName -Recurse -Filter $SetupFile -File).FullName
+            param (
+                $SetupFile,
+                [switch] $Bin
+            )
+            Invoke-Expression -Command "(Get-ChildItem -Path $Unzipped -Recurse -Filter  $($Bin ? 'bin -Directory':"$SetupFile -File")).FullName"
         }
         [PSCustomObject] @{
+            UnzipPath = $Unzipped;
+            BinPath = & $GetSetup -Bin;
             ExePath = & $GetSetup $CURL_EXECUTABLE_NAME;
             CrtPath = & $GetSetup $CURL_CERTIFICATE_NAME;
             LibPath = ((& $GetSetup $LIBCURL_DLL_NAME),(& $GetSetup $LIBCURL_DEF_NAME))
@@ -84,28 +91,24 @@ function Update-Curl ($SaveCopyTo) {
     Get-CurlDownloadInfo |
     ForEach-Object {
         if (Compare-CurlDownloadInfo -Version $_.Version) {
-            $LocalName = "curl-$($_.Version)"
             if ($SaveCopyToExist) {
                 $DlLocalArchive = "$SaveCopyTo\$($_.Version).zip"
                 if (Test-Path -Path $DlLocalArchive) {
                     $_.Link = $DlLocalArchive
                 }
             }
-            Save-Curl -LocalName $LocalName -Link $_.Link |
+            Save-Curl -Link $_.Link |
             ForEach-Object {
                 Update-CurlExecutable -SetupPath $_.ExePath
                 Update-CurlCertificate -CertPath $_.CrtPath
                 Update-Libcurl -LibPath $_.LibPath
+                if ($SaveCopyToExist -and ($null -ne $_.BinPath)) {
+                    Remove-Item -Path "$SaveCopyTo\*" -Recurse -Force
+                    Compress-Archive -Path "$($_.BinPath)\*" -DestinationPath $DlLocalArchive -CompressionLevel Optimal -Force
+                }
+                Remove-Item -Path $_.UnzipPath -Recurse -Force
             }
             New-Item -Path $_.Version -ItemType File | Out-Null
-            if ($SaveCopyToExist) {
-                $DlLocal = (Get-ChildItem -Path $LocalName -Recurse -Filter 'bin' -Directory).FullName
-                if ($null -ne $DlLocal) {
-                    Remove-Item -Path "$SaveCopyTo\*" -Recurse -Force
-                    Compress-Archive -Path "$DlLocal\*" -DestinationPath $DlLocalArchive -CompressionLevel Optimal -Force
-                }
-            }
-            Remove-Item -Path $LocalName -Recurse -Force
         }
     }
 }
