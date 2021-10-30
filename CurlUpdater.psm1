@@ -92,9 +92,9 @@ function Update-Curl ($SaveCopyTo) {
     ForEach-Object {
         if (Compare-CurlDownloadInfo -Version $_.Version) {
             if ($SaveCopyToExist) {
-                $DlLocalArchive = "$SaveCopyTo\$($_.Version).zip"
+                $DlLocalArchive = "$($SaveCopyTo -replace '\\$')\$($_.Version).*"
                 if (Test-Path -Path $DlLocalArchive) {
-                    $_.Link = $DlLocalArchive
+                    $_.Link = (Resolve-Path -Path $DlLocalArchive).Path
                 }
             }
             Save-Curl -Link $_.Link |
