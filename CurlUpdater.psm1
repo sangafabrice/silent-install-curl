@@ -17,7 +17,11 @@ function Get-CurlDownloadInfo {
         Where-Object {$_ -like "dl-*/curl-*-win64-mingw.zip"} |
         Select-Object -Property @{
             Name = 'Version';
-            Expression = {if ($_ -match '(?<Version>\d+\.\d+\.\d+(_\d+)?)') {$Matches.Version}}
+            Expression = {
+                if ($_ -match '(?<Version>\d+\.\d+\.\d+(_\d+)?)') {
+                    "curl-$($Matches.Version)"
+                }
+            }
         },@{
             Name = 'Link';
             Expression = {"$CURL_FOR_WINDOWS_PAGE$_"}
